@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}{{ workout.name }} – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up">
+    <div style="display:flex;align-items:center;gap:1rem;margin-bottom:0.5rem">
+      <a href="{{ url_for('workouts') }}" style="color:var(--text3);font-size:0.85rem">← Workouts</a>
+    </div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div class="page-title">{{ workout.name.upper() }}</div>
+        <div class="page-subtitle">{{ workout.date|fmtdate('%A, %B %d, %Y') }}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        {% if workout.duration %}
+        <span class="badge badge-blue">⏱ {{ workout.duration }} min</span>
+        {% endif %}
+        <span class="badge badge-gray">{{ workout.exercises|length }} exercises</span>
+      </div>
+    </div>
+  </div>
+
+  {% if workout.notes %}
+  <div class="card fade-up" style="margin-bottom:1.5rem;border-left:3px solid var(--accent)">
+    <div style="color:var(--text2);font-size:0.9rem">📝 {{ workout.notes }}</div>
+  </div>
+  {% endif %}
+
+  <div class="stats-grid fade-up fade-up-1" style="grid-template-columns:repeat(3,1fr)">
+    <div class="stat-card">
+      <div class="stat-label">Total Volume</div>
+      <div class="stat-value">{{ total_vol }}</div>
+      <div class="stat-sub">kg lifted</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Total Sets</div>
+      <div class="stat-value">{{ total_sets }}</div>
+      <div class="stat-sub">sets completed</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Exercises</div>
+      <div class="stat-value">{{ ex_list|length }}</div>
+      <div class="stat-sub">muscle groups trained</div>
+    </div>
+  </div>
+
+  <!-- Exercises -->
+  <div class="fade-up fade-up-2">
+    {% for item in ex_list %}
+    <div class="exercise-card">
+      <div class="exercise-card-title">
+        <span>{{ item.ex['name'] }}</span>
+        {% set cat = item.ex['category'] %}
+        <span class="badge {% if cat == 'chest' %}badge-red{% elif cat == 'back' %}badge-blue{% elif cat == 'legs' %}badge-purple{% else %}badge-gray{% endif %}">
+          {{ cat }}
+        </span>
+        <span style="margin-left:auto;font-family:var(--font-mono);font-size:0.85rem;color:var(--accent)">
+          {{ item.vol }}kg total
+        </span>
+      </div>
+      <table style="width:100%">
+        <thead><tr><th>Set</th><th>Reps</th><th>Weight</th><th>Volume</th></tr></thead>
+        <tbody>
+          {% for s in item.sets %}
+          <tr>
+            <td style="font-family:var(--font-mono);color:var(--text3)">{{ s['set_number'] }}</td>
+            <td>{{ s['reps'] or '—' }}</td>
+            <td>{% if s['weight'] %}{{ s['weight'] }}kg{% else %}—{% endif %}</td>
+            <td style="color:var(--accent);font-family:var(--font-mono)">
+              {% if s['weight'] and s['reps'] %}{{ (s['weight'] * s['reps'])|int }}kg{% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div style="display:flex;gap:10px;margin-top:2rem" class="fade-up fade-up-3">
+    <a href="{{ url_for('workouts') }}" class="btn-secondary">← Back</a>
+    <a href="{{ url_for('new_workout') }}" class="btn-primary">Log Similar Workout</a>
+    <button onclick="deleteWorkout({{ workout.id }})" class="btn-danger" style="margin-left:auto">Delete Workout</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function deleteWorkout(id) {
+  if (!confirm('Delete this workout permanently?')) return;
+  await fetch(`/workout/${id}/delete`, { method: 'POST' });
+  window.location.href = "{{ url_for('workouts') }}";
+}
+</script>
+{% endblock %}

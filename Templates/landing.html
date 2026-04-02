@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IronLog – Gym Progress Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="landing">
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-name">IRONLOG</span>
+    </div>
+    <div style="margin-left:auto; display:flex; gap:10px; align-items:center;">
+      <a href="{{ url_for('login') }}" class="btn-secondary btn-sm">Login</a>
+      <a href="{{ url_for('register') }}" class="btn-primary btn-sm">Get Started</a>
+    </div>
+  </nav>
+
+  <div class="landing-hero">
+    <div class="landing-badge fade-up">🏋️ Track. Lift. Dominate.</div>
+    <h1 class="landing-title fade-up fade-up-1">
+      FORGE<br>YOUR<br><span>LEGACY</span>
+    </h1>
+    <p class="landing-subtitle fade-up fade-up-2">
+      The serious gym tracker built for athletes who don't cut corners.
+      Log workouts, track PRs, analyze progress — all in one place.
+    </p>
+    <div class="landing-cta fade-up fade-up-3">
+      <a href="{{ url_for('register') }}" class="btn-primary" style="font-size:1rem;padding:14px 32px;">
+        Start Tracking Free
+      </a>
+      <a href="{{ url_for('login') }}" class="btn-secondary" style="font-size:1rem;padding:14px 32px;">
+        Sign In
+      </a>
+    </div>
+  </div>
+
+  <div class="landing-features">
+    <div class="feature-item fade-up">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">SMART ANALYTICS</div>
+      <p class="feature-text">Visualize your strength gains with interactive charts and progress curves over time.</p>
+    </div>
+    <div class="feature-item fade-up fade-up-1">
+      <div class="feature-icon">🏆</div>
+      <div class="feature-title">PR TRACKING</div>
+      <p class="feature-text">Automatically detect and celebrate personal records every time you push past your limits.</p>
+    </div>
+    <div class="feature-item fade-up fade-up-2">
+      <div class="feature-icon">💪</div>
+      <div class="feature-title">BODY STATS</div>
+      <p class="feature-text">Log weight, body fat, and measurements to track your physique transformation.</p>
+    </div>
+    <div class="feature-item fade-up fade-up-3">
+      <div class="feature-icon">🔥</div>
+      <div class="feature-title">STREAKS & GOALS</div>
+      <p class="feature-text">Stay consistent with workout streaks and goal-based training programs.</p>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.fade-up').forEach((el, i) => {
+    el.style.animationDelay = (i * 0.08) + 's';
+  });
+});
+</script>
+</body>
+</html>

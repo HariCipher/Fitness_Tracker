@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block title %}Profile – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up">
+    <div class="page-title">PROFILE</div>
+    <div class="page-subtitle">Manage your settings and goals</div>
+  </div>
+
+  <div class="profile-header fade-up fade-up-1">
+    <div class="avatar">{{ user.name[0].upper() }}</div>
+    <div>
+      <div class="profile-name">{{ user.name.upper() }}</div>
+      <div style="color:var(--text2);margin-top:4px">@{{ user.username }} · {{ user.email }}</div>
+      <div class="profile-since">Member since {{ user.created_at|fmtdate('%B %Y') }}</div>
+    </div>
+  </div>
+
+  <div class="grid-2 fade-up fade-up-2">
+    <!-- Personal Info -->
+    <div class="card">
+      <div class="card-title">Personal Info</div>
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" id="name" class="form-input" value="{{ user.name or '' }}">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Age</label>
+          <input type="number" id="age" class="form-input" value="{{ user.age or '' }}" placeholder="25">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Height (cm)</label>
+          <input type="number" id="height" class="form-input" value="{{ user.height or '' }}" step="0.5" placeholder="175">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Current Weight (kg)</label>
+        <input type="number" id="weight" class="form-input" value="{{ user.weight or '' }}" step="0.1" placeholder="75.0">
+      </div>
+      <button onclick="saveProfile()" class="btn-primary" id="saveBtn">Save Changes</button>
+    </div>
+
+    <!-- Fitness Goal -->
+    <div class="card">
+      <div class="card-title">Fitness Goal</div>
+      <div class="goal-selector">
+        <div>
+          <input type="radio" name="goal" id="goal-strength" value="strength" class="goal-option" {{ 'checked' if user.goal == 'strength' }}>
+          <label for="goal-strength" class="goal-label">
+            <div class="goal-icon">🏋️</div>
+            <div class="goal-name">Strength</div>
+          </label>
+        </div>
+        <div>
+          <input type="radio" name="goal" id="goal-muscle_gain" value="muscle_gain" class="goal-option" {{ 'checked' if user.goal == 'muscle_gain' }}>
+          <label for="goal-muscle_gain" class="goal-label">
+            <div class="goal-icon">💪</div>
+            <div class="goal-name">Muscle Gain</div>
+          </label>
+        </div>
+        <div>
+          <input type="radio" name="goal" id="goal-weight_loss" value="weight_loss" class="goal-option" {{ 'checked' if user.goal == 'weight_loss' }}>
+          <label for="goal-weight_loss" class="goal-label">
+            <div class="goal-icon">🔥</div>
+            <div class="goal-name">Weight Loss</div>
+          </label>
+        </div>
+        <div>
+          <input type="radio" name="goal" id="goal-endurance" value="endurance" class="goal-option" {{ 'checked' if user.goal == 'endurance' }}>
+          <label for="goal-endurance" class="goal-label">
+            <div class="goal-icon">🏃</div>
+            <div class="goal-name">Endurance</div>
+          </label>
+        </div>
+      </div>
+      {% if user.height and user.weight %}
+      <div style="margin-top:1.5rem;padding:1rem;background:var(--bg3);border-radius:10px">
+        <div class="card-title" style="margin-bottom:0.75rem">BMI Calculator</div>
+        {% set bmi = (user.weight / ((user.height/100) ** 2))|round(1) %}
+        <div style="display:flex;align-items:center;gap:1rem">
+          <div style="font-family:var(--font-display);font-size:2.5rem;color:
+            {% if bmi < 18.5 %}var(--accent3)
+            {% elif bmi < 25 %}var(--accent)
+            {% elif bmi < 30 %}#f59e0b
+            {% else %}var(--accent2){% endif %}">{{ bmi }}</div>
+          <div>
+            <div style="font-weight:600">
+              {% if bmi < 18.5 %}Underweight
+              {% elif bmi < 25 %}Normal
+              {% elif bmi < 30 %}Overweight
+              {% else %}Obese{% endif %}
+            </div>
+            <div style="color:var(--text3);font-size:0.8rem">BMI Score</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="card fade-up fade-up-3" style="margin-top:1.5rem;border-color:rgba(255,71,87,0.2)">
+    <div class="card-title" style="color:var(--accent2)">Danger Zone</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      <div>
+        <div style="font-weight:600">Delete Account</div>
+        <div style="color:var(--text3);font-size:0.85rem">Permanently delete your account and all data</div>
+      </div>
+      <button onclick="alert('Contact support to delete your account.')" class="btn-danger">Delete Account</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function saveProfile() {
+  const btn = document.getElementById('saveBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  const goal = document.querySelector('input[name="goal"]:checked')?.value;
+  const res = await fetch('/profile', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name: document.getElementById('name').value,
+      age: parseInt(document.getElementById('age').value) || null,
+      height: parseFloat(document.getElementById('height').value) || null,
+      weight: parseFloat(document.getElementById('weight').value) || null,
+      goal
+    })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('Profile updated! ✓', 'success');
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    showToast('Error saving', 'error');
+    btn.textContent = 'Save Changes'; btn.disabled = false;
+  }
+}
+</script>
+{% endblock %}

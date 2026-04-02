@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="dashboard-header fade-up">
+    <div>
+      <div class="greeting">
+        GOOD {% if now.hour < 12 %}MORNING{% elif now.hour < 17 %}AFTERNOON{% else %}EVENING{% endif %},
+        <span>{{ user.name.upper() }}</span> 👊
+      </div>
+      <div class="greeting-sub">
+        {% if streak > 0 %}You're on a hot streak — keep it going!{% else %}Time to get back in the game.{% endif %}
+      </div>
+    </div>
+    <div class="streak-badge">
+      <div>
+        <div class="streak-num">{{ streak }}</div>
+        <div class="streak-label">Day Streak 🔥</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stat Cards -->
+  <div class="stats-grid fade-up fade-up-1">
+    <div class="stat-card">
+      <div class="stat-label">Total Workouts</div>
+      <div class="stat-value">{{ total_workouts }}</div>
+      <div class="stat-sub">Sessions logged</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">This Week</div>
+      <div class="stat-value">{{ weekly_workouts }}</div>
+      <div class="stat-sub">Workouts completed</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Weekly Volume</div>
+      <div class="stat-value">{{ weekly_volume }}</div>
+      <div class="stat-sub">Total kg lifted</div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label">Body Weight</div>
+      <div class="stat-value">{{ latest_stat.weight|int if latest_stat and latest_stat.weight else (user.weight|int if user.weight else '—') }}</div>
+      <div class="stat-sub">kg (last recorded)</div>
+    </div>
+  </div>
+
+  <div class="grid-2 fade-up fade-up-2">
+    <!-- Weekly Activity -->
+    <div class="card">
+      <div class="card-title">Weekly Activity</div>
+      <div class="week-bars" id="weekBars"></div>
+    </div>
+
+    <!-- Recent Workouts -->
+    <div class="card">
+      <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+        Recent Workouts
+        <a href="{{ url_for('new_workout') }}" class="btn-primary btn-sm">+ New</a>
+      </div>
+      {% if recent_workouts %}
+      <div class="recent-list">
+        {% for wo in recent_workouts %}
+        <a href="{{ url_for('view_workout', workout_id=wo.id) }}" class="recent-item" style="display:flex">
+          <div class="recent-dot"></div>
+          <div style="flex:1">
+            <div class="recent-name">{{ wo.name }}</div>
+            <div class="recent-meta">{{ wo.exercises|length }} exercises{% if wo.duration %} · {{ wo.duration }}min{% endif %}</div>
+          </div>
+          <div class="recent-date">{{ wo.date|fmtdate('%b %d') }}</div>
+        </a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-icon">🏋️</div>
+        <div class="empty-title">No workouts yet</div>
+        <a href="{{ url_for('new_workout') }}" class="btn-primary" style="margin-top:1rem">Log First Workout</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid-2 fade-up fade-up-3" style="margin-top:1.5rem">
+    <!-- Personal Records -->
+    <div class="card">
+      <div class="card-title">🏆 Personal Records</div>
+      {% if prs %}
+      <div class="pr-list">
+        {% for pr in prs %}
+        <div class="pr-item">
+          <div>
+            <div class="pr-name">{{ pr.exercise_name }}</div>
+            <div style="font-size:0.75rem;color:var(--text3)">{{ pr.date|fmtdate('%b %d, %Y') }}</div>
+          </div>
+          <div class="pr-value">{{ pr.weight }}kg × {{ pr.reps }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:2rem">
+        <div class="empty-icon">🏅</div>
+        <div class="empty-title">Log workouts to set PRs</div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Quick Log -->
+    <div class="card">
+      <div class="card-title">Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <a href="{{ url_for('new_workout') }}" class="btn-primary" style="justify-content:center;padding:14px">
+          🏋️ Log a Workout
+        </a>
+        <a href="{{ url_for('body_stats') }}" class="btn-secondary" style="justify-content:center;padding:14px">
+          📏 Record Body Stats
+        </a>
+        <a href="{{ url_for('progress') }}" class="btn-secondary" style="justify-content:center;padding:14px">
+          📊 View Progress Charts
+        </a>
+        <a href="{{ url_for('profile') }}" class="btn-secondary" style="justify-content:center;padding:14px">
+          ⚙️ Update Profile
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const now = new Date();
+
+// Week bars
+async function loadWeekBars() {
+  const res = await fetch('/api/dashboard/weekly');
+  const data = await res.json();
+  const max = Math.max(...data.map(d => d.workouts), 1);
+  const container = document.getElementById('weekBars');
+  container.innerHTML = data.map(d => `
+    <div class="week-bar-wrap">
+      <div class="week-bar ${d.workouts === 0 ? 'empty' : ''}" 
+           style="height: ${Math.max(4, (d.workouts / max) * 64)}px;
+                  background: ${d.workouts > 0 ? 'var(--accent)' : 'var(--bg3)'}">
+      </div>
+      <div class="week-day">${d.day}</div>
+    </div>
+  `).join('');
+}
+loadWeekBars();
+</script>
+{% endblock %}

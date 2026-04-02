@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+{% block title %}Progress – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up">
+    <div class="page-title">PROGRESS</div>
+    <div class="page-subtitle">Track your strength gains and body transformation</div>
+  </div>
+
+  <!-- Filter -->
+  <div class="filter-tabs fade-up fade-up-1">
+    <button class="filter-tab active" onclick="setRange(30, this)">30 Days</button>
+    <button class="filter-tab" onclick="setRange(90, this)">90 Days</button>
+    <button class="filter-tab" onclick="setRange(180, this)">6 Months</button>
+    <button class="filter-tab" onclick="setRange(365, this)">1 Year</button>
+  </div>
+
+  <div class="grid-2 fade-up fade-up-2">
+    <!-- Volume Chart -->
+    <div class="card">
+      <div class="card-title">Weekly Volume</div>
+      <div class="chart-container"><canvas id="volumeChart"></canvas></div>
+    </div>
+
+    <!-- Body Weight Chart -->
+    <div class="card">
+      <div class="card-title">Body Weight</div>
+      <div class="chart-container"><canvas id="weightChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Exercise Progress -->
+  <div class="card fade-up fade-up-3" style="margin-top:1.5rem">
+    <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+      Exercise Strength Progress
+      <div style="display:flex;gap:10px;align-items:center">
+        <select id="exercisePicker" class="form-select" style="width:220px" onchange="loadExerciseChart()">
+          <option value="">Select an exercise...</option>
+        </select>
+      </div>
+    </div>
+    <div class="chart-container"><canvas id="exerciseChart"></canvas></div>
+  </div>
+
+  <!-- PRs Table -->
+  <div class="card fade-up fade-up-4" style="margin-top:1.5rem">
+    <div class="card-title">🏆 All Personal Records</div>
+    {% if prs %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Exercise</th><th>Best Weight</th><th>Reps</th><th>1RM Est.</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for pr in prs %}
+          <tr>
+            <td style="font-weight:600">{{ pr.exercise_name }}</td>
+            <td><span class="badge badge-yellow">{{ pr.weight }}kg</span></td>
+            <td>{{ pr.reps }}</td>
+            <td style="color:var(--accent);font-family:var(--font-mono)">
+              {{ (pr.weight * (1 + pr.reps / 30))|round(1) }}kg
+            </td>
+            <td style="color:var(--text3);font-size:0.8rem;font-family:var(--font-mono)">{{ pr.date|fmtdate('%b %d, %Y') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon">🏋️</div>
+      <div class="empty-title">Log workouts to track PRs</div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentRange = 30;
+let volumeChart, weightChart, exerciseChart;
+
+const chartDefaults = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { grid: { color: 'rgba(42,42,58,0.5)' }, ticks: { color: '#9090a8', font: { family: 'Space Mono', size: 10 } } },
+    y: { grid: { color: 'rgba(42,42,58,0.5)' }, ticks: { color: '#9090a8', font: { family: 'Space Mono', size: 10 } } }
+  }
+};
+
+function setRange(days, btn) {
+  currentRange = days;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  loadCharts();
+}
+
+async function loadCharts() {
+  await Promise.all([loadVolumeChart(), loadWeightChart()]);
+}
+
+async function loadVolumeChart() {
+  const res = await fetch(`/api/progress/volume?days=${currentRange}`);
+  const data = await res.json();
+  const ctx = document.getElementById('volumeChart').getContext('2d');
+  if (volumeChart) volumeChart.destroy();
+  volumeChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(d => d.date),
+      datasets: [{
+        data: data.map(d => d.volume),
+        backgroundColor: 'rgba(232,255,71,0.7)',
+        borderColor: '#e8ff47',
+        borderWidth: 1, borderRadius: 4
+      }]
+    },
+    options: { ...chartDefaults,
+      plugins: { ...chartDefaults.plugins, tooltip: {
+        callbacks: { label: ctx => `${ctx.raw}kg` }
+      }}
+    }
+  });
+}
+
+async function loadWeightChart() {
+  const res = await fetch('/api/progress/bodyweight');
+  const data = await res.json();
+  const ctx = document.getElementById('weightChart').getContext('2d');
+  if (weightChart) weightChart.destroy();
+  if (!data.length) return;
+  weightChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.date),
+      datasets: [
+        {
+          label: 'Weight (kg)', data: data.map(d => d.weight),
+          borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)',
+          tension: 0.3, pointRadius: 4, pointBackgroundColor: '#00d4ff', fill: true
+        },
+        ...(data.some(d => d.body_fat) ? [{
+          label: 'Body Fat %', data: data.map(d => d.body_fat),
+          borderColor: '#ff4757', backgroundColor: 'transparent',
+          tension: 0.3, pointRadius: 3, borderDash: [5,5], yAxisID: 'y1'
+        }] : [])
+      ]
+    },
+    options: {
+      ...chartDefaults,
+      plugins: { legend: { display: true, labels: { color: '#9090a8', font: { family: 'DM Sans' } } } },
+      scales: {
+        ...chartDefaults.scales,
+        y1: { position: 'right', grid: { display: false }, ticks: { color: '#9090a8', callback: v => v + '%' } }
+      }
+    }
+  });
+}
+
+async function loadExerciseChart() {
+  const name = document.getElementById('exercisePicker').value;
+  if (!name) return;
+  const res = await fetch(`/api/progress/exercise/${encodeURIComponent(name)}`);
+  const data = await res.json();
+  const ctx = document.getElementById('exerciseChart').getContext('2d');
+  if (exerciseChart) exerciseChart.destroy();
+  if (!data.length) return;
+  exerciseChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map(d => d.date),
+      datasets: [{
+        data: data.map(d => d.max_weight),
+        borderColor: '#a855f7', backgroundColor: 'rgba(168,85,247,0.08)',
+        tension: 0.3, pointRadius: 5, pointBackgroundColor: '#a855f7', fill: true
+      }]
+    },
+    options: { ...chartDefaults,
+      plugins: { ...chartDefaults.plugins, tooltip: {
+        callbacks: { label: ctx => `${ctx.raw}kg max` }
+      }}
+    }
+  });
+}
+
+// Load exercise names for picker
+async function loadExerciseNames() {
+  const res = await fetch('/api/exercises/names');
+  const names = await res.json();
+  const sel = document.getElementById('exercisePicker');
+  names.forEach(n => {
+    const opt = document.createElement('option');
+    opt.value = n; opt.textContent = n;
+    sel.appendChild(opt);
+  });
+  if (names.length) { sel.value = names[0]; loadExerciseChart(); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadCharts();
+  loadExerciseNames();
+});
+</script>
+{% endblock %}

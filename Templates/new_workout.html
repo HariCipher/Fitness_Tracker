@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% block title %}Log Workout – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up">
+    <div class="page-title">LOG WORKOUT</div>
+    <div class="page-subtitle">Record your exercises, sets, and reps</div>
+  </div>
+
+  <!-- Workout Info -->
+  <div class="card fade-up fade-up-1" style="margin-bottom:1.5rem">
+    <div class="form-row-3">
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Workout Name *</label>
+        <input type="text" id="workoutName" class="form-input" placeholder="e.g. Push Day, Leg Day..." value="Workout – {{ now|fmtdate('%b %d') if now else '' }}">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Date</label>
+        <input type="date" id="workoutDate" class="form-input" value="{{ now|fmtdate('%Y-%m-%d') if now else '' }}">
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label class="form-label">Duration (min)</label>
+        <input type="number" id="workoutDuration" class="form-input" placeholder="60" min="1" max="300">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:1rem;margin-bottom:0">
+      <label class="form-label">Notes (optional)</label>
+      <textarea id="workoutNotes" class="form-textarea" placeholder="How did it feel? Any PRs?"></textarea>
+    </div>
+  </div>
+
+  <!-- Exercises -->
+  <div id="exerciseList" class="fade-up fade-up-2"></div>
+
+  <!-- Add Exercise Button -->
+  <div style="display:flex;gap:10px;margin-bottom:2rem" class="fade-up fade-up-3">
+    <button onclick="addExercise()" class="btn-secondary" style="flex:1;justify-content:center;padding:14px;font-size:1rem">
+      ＋ Add Exercise
+    </button>
+  </div>
+
+  <!-- Quick Add Templates -->
+  <div class="card fade-up fade-up-3" style="margin-bottom:2rem">
+    <div class="card-title">Quick Add Common Exercises</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      {% set quick = [
+        ('Bench Press','chest'), ('Squat','legs'), ('Deadlift','back'),
+        ('Pull-up','back'), ('Overhead Press','shoulders'), ('Barbell Row','back'),
+        ('Incline Press','chest'), ('Leg Press','legs'), ('Bicep Curl','arms'),
+        ('Tricep Dips','arms'), ('Lat Pulldown','back'), ('Lunges','legs'),
+        ('Plank','core'), ('Running','cardio')
+      ] %}
+      {% for name, cat in quick %}
+      <button class="badge badge-gray" style="cursor:pointer;padding:8px 14px;font-size:0.8rem"
+              onclick="addExercise('{{ name }}', '{{ cat }}')">{{ name }}</button>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Save Button -->
+  <div style="display:flex;gap:10px;justify-content:flex-end" class="fade-up fade-up-4">
+    <a href="{{ url_for('workouts') }}" class="btn-secondary">Cancel</a>
+    <button onclick="saveWorkout()" class="btn-primary" style="padding:12px 32px;font-size:1rem" id="saveBtn">
+      💾 Save Workout
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let exerciseCount = 0;
+
+const categoryColors = {
+  chest: 'badge-red', back: 'badge-blue', legs: 'badge-purple',
+  shoulders: 'badge-yellow', arms: 'badge-yellow', core: 'badge-blue',
+  cardio: 'badge-gray', other: 'badge-gray'
+};
+
+function addExercise(name = '', category = 'other') {
+  const id = ++exerciseCount;
+  const div = document.createElement('div');
+  div.className = 'exercise-block fade-up';
+  div.id = `exercise-${id}`;
+  div.innerHTML = `
+    <div class="exercise-header">
+      <input type="text" class="exercise-name-input" placeholder="Exercise name..." value="${name}"
+             id="exName-${id}">
+      <select id="exCat-${id}" class="form-select" style="width:140px">
+        ${['chest','back','legs','shoulders','arms','core','cardio','other'].map(c =>
+          `<option value="${c}" ${c===category?'selected':''}>${c.charAt(0).toUpperCase()+c.slice(1)}</option>`
+        ).join('')}
+      </select>
+      <button onclick="removeExercise(${id})" class="btn-danger" style="padding:6px 12px;font-size:0.8rem">Remove</button>
+    </div>
+    <table class="sets-table">
+      <thead>
+        <tr>
+          <th style="width:40px">Set</th>
+          <th>Reps</th>
+          <th>Weight (kg)</th>
+          <th style="width:36px"></th>
+        </tr>
+      </thead>
+      <tbody id="sets-${id}"></tbody>
+    </table>
+    <button onclick="addSet(${id})" class="add-set-btn" style="margin-top:10px">＋ Add Set</button>
+  `;
+  document.getElementById('exerciseList').appendChild(div);
+  addSet(id);
+  if (name === '') div.querySelector('.exercise-name-input').focus();
+}
+
+function addSet(exId) {
+  const tbody = document.getElementById(`sets-${exId}`);
+  const setNum = tbody.children.length + 1;
+  const row = document.createElement('tr');
+  row.className = 'set-row';
+  row.id = `set-${exId}-${setNum}`;
+  row.innerHTML = `
+    <td class="set-num">${setNum}</td>
+    <td><input type="number" class="set-input" placeholder="10" min="1" max="999" id="reps-${exId}-${setNum}"></td>
+    <td><input type="number" class="set-input" placeholder="0" min="0" step="0.5" id="weight-${exId}-${setNum}"></td>
+    <td><button onclick="removeSet(this)" class="btn-remove-set">✕</button></td>
+  `;
+  tbody.appendChild(row);
+  // Pre-fill from previous set
+  if (setNum > 1) {
+    const prevReps = document.getElementById(`reps-${exId}-${setNum-1}`);
+    const prevWeight = document.getElementById(`weight-${exId}-${setNum-1}`);
+    if (prevReps) row.querySelector(`#reps-${exId}-${setNum}`).value = prevReps.value;
+    if (prevWeight) row.querySelector(`#weight-${exId}-${setNum}`).value = prevWeight.value;
+  }
+}
+
+function removeSet(btn) {
+  const row = btn.closest('tr');
+  const tbody = row.parentElement;
+  if (tbody.children.length > 1) {
+    row.remove();
+    // Re-number
+    Array.from(tbody.children).forEach((r, i) => {
+      r.querySelector('.set-num').textContent = i + 1;
+    });
+  }
+}
+
+function removeExercise(id) {
+  document.getElementById(`exercise-${id}`)?.remove();
+}
+
+async function saveWorkout() {
+  const name = document.getElementById('workoutName').value.trim();
+  if (!name) { showToast('Please enter a workout name', 'error'); return; }
+  if (exerciseCount === 0 || document.getElementById('exerciseList').children.length === 0) {
+    showToast('Add at least one exercise', 'error'); return;
+  }
+
+  const exercises = [];
+  document.querySelectorAll('.exercise-block').forEach(block => {
+    const idMatch = block.id.match(/exercise-(\d+)/);
+    if (!idMatch) return;
+    const exId = idMatch[1];
+    const exName = document.getElementById(`exName-${exId}`)?.value?.trim();
+    if (!exName) return;
+
+    const sets = [];
+    document.querySelectorAll(`#sets-${exId} .set-row`).forEach((row, i) => {
+      const reps = document.getElementById(`reps-${exId}-${i+1}`)?.value;
+      const weight = document.getElementById(`weight-${exId}-${i+1}`)?.value;
+      if (reps || weight) {
+        sets.push({ reps: parseInt(reps) || null, weight: parseFloat(weight) || null });
+      }
+    });
+
+    exercises.push({
+      name: exName,
+      category: document.getElementById(`exCat-${exId}`)?.value || 'other',
+      sets
+    });
+  });
+
+  const btn = document.getElementById('saveBtn');
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+  btn.disabled = true;
+
+  const res = await fetch('/workout/new', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      name,
+      date: document.getElementById('workoutDate').value,
+      duration: parseInt(document.getElementById('workoutDuration').value) || null,
+      notes: document.getElementById('workoutNotes').value,
+      exercises
+    })
+  });
+  const data = await res.json();
+  if (data.success) {
+    showToast('Workout saved! 💪', 'success');
+    setTimeout(() => window.location.href = `/workout/${data.id}`, 800);
+  } else {
+    showToast('Error saving workout', 'error');
+    btn.innerHTML = '💾 Save Workout';
+    btn.disabled = false;
+  }
+}
+
+// Add first exercise on load
+document.addEventListener('DOMContentLoaded', () => {
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('workoutDate').value = today;
+  document.getElementById('workoutName').value = `Workout – ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+});
+</script>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'base.html' %}
+{% block title %}Body Stats – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <div>
+      <div class="page-title">BODY STATS</div>
+      <div class="page-subtitle">Track your body composition over time</div>
+    </div>
+    <button onclick="openModal()" class="btn-primary">+ Record Stats</button>
+  </div>
+
+  {% if stats %}
+  <!-- Latest Stats -->
+  {% set latest = stats[0] %}
+  <div class="card fade-up fade-up-1" style="margin-bottom:1.5rem;border-color:rgba(0,212,255,0.2)">
+    <div class="card-title">Latest Measurements — {{ latest.date|fmtdate('%B %d, %Y') }}</div>
+    <div class="measurements-grid">
+      {% if latest.weight %}
+      <div class="measure-card">
+        <div class="measure-value">{{ latest.weight }}</div>
+        <div class="measure-label">Weight (kg)</div>
+      </div>
+      {% endif %}
+      {% if latest.body_fat %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:var(--accent2)">{{ latest.body_fat }}%</div>
+        <div class="measure-label">Body Fat</div>
+      </div>
+      {% endif %}
+      {% if latest.muscle_mass %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:var(--accent)">{{ latest.muscle_mass }}</div>
+        <div class="measure-label">Muscle Mass (kg)</div>
+      </div>
+      {% endif %}
+      {% if latest.chest %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:var(--accent3)">{{ latest.chest }}</div>
+        <div class="measure-label">Chest (cm)</div>
+      </div>
+      {% endif %}
+      {% if latest.waist %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:var(--accent3)">{{ latest.waist }}</div>
+        <div class="measure-label">Waist (cm)</div>
+      </div>
+      {% endif %}
+      {% if latest.hips %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:var(--accent3)">{{ latest.hips }}</div>
+        <div class="measure-label">Hips (cm)</div>
+      </div>
+      {% endif %}
+      {% if latest.arms %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:#a855f7">{{ latest.arms }}</div>
+        <div class="measure-label">Arms (cm)</div>
+      </div>
+      {% endif %}
+      {% if latest.thighs %}
+      <div class="measure-card">
+        <div class="measure-value" style="color:#a855f7">{{ latest.thighs }}</div>
+        <div class="measure-label">Thighs (cm)</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- History Table -->
+  <div class="card fade-up fade-up-2">
+    <div class="card-title">History</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th><th>Weight</th><th>Body Fat</th><th>Waist</th><th>Arms</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for stat in stats %}
+          <tr>
+            <td style="font-family:var(--font-mono);font-size:0.82rem;color:var(--text2)">{{ stat.date|fmtdate('%b %d, %Y') }}</td>
+            <td>{% if stat.weight %}<span class="badge badge-blue">{{ stat.weight }}kg</span>{% else %}—{% endif %}</td>
+            <td>{% if stat.body_fat %}{{ stat.body_fat }}%{% else %}—{% endif %}</td>
+            <td>{% if stat.waist %}{{ stat.waist }}cm{% else %}—{% endif %}</td>
+            <td>{% if stat.arms %}{{ stat.arms }}cm{% else %}—{% endif %}</td>
+            <td>
+              <button onclick="deleteStat({{ stat.id }}, this)" class="btn-danger" style="font-size:0.75rem;padding:5px 10px">Delete</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% else %}
+  <div class="card fade-up">
+    <div class="empty-state">
+      <div class="empty-icon">📏</div>
+      <div class="empty-title">No body stats recorded</div>
+      <p style="color:var(--text3);margin-bottom:1.5rem">Start tracking your body composition today</p>
+      <button onclick="openModal()" class="btn-primary">Record Your First Stats</button>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Modal -->
+<div id="modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:1rem">
+  <div class="card" style="width:100%;max-width:560px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem">
+      <div class="card-title" style="margin-bottom:0">Record Body Stats</div>
+      <button onclick="closeModal()" style="color:var(--text3);font-size:1.5rem">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input type="date" id="statDate" class="form-input">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Weight (kg)</label>
+        <input type="number" id="statWeight" class="form-input" step="0.1" placeholder="75.0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Body Fat %</label>
+        <input type="number" id="statBodyFat" class="form-input" step="0.1" placeholder="15.0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Muscle Mass (kg)</label>
+        <input type="number" id="statMuscle" class="form-input" step="0.1" placeholder="60.0">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chest (cm)</label>
+        <input type="number" id="statChest" class="form-input" step="0.5" placeholder="100">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Waist (cm)</label>
+        <input type="number" id="statWaist" class="form-input" step="0.5" placeholder="80">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hips (cm)</label>
+        <input type="number" id="statHips" class="form-input" step="0.5" placeholder="95">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Arms (cm)</label>
+        <input type="number" id="statArms" class="form-input" step="0.5" placeholder="35">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Thighs (cm)</label>
+        <input type="number" id="statThighs" class="form-input" step="0.5" placeholder="55">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:0.5rem">
+      <button onclick="closeModal()" class="btn-secondary">Cancel</button>
+      <button onclick="saveStat()" class="btn-primary" id="saveStatBtn">Save Stats</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openModal() {
+  document.getElementById('modal').style.display = 'flex';
+  document.getElementById('statDate').value = new Date().toISOString().split('T')[0];
+}
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+}
+
+async function saveStat() {
+  const btn = document.getElementById('saveStatBtn');
+  btn.innerHTML = '<span class="spinner"></span>'; btn.disabled = true;
+  const res = await fetch('/body-stats', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({
+      date: document.getElementById('statDate').value,
+      weight: parseFloat(document.getElementById('statWeight').value) || null,
+      body_fat: parseFloat(document.getElementById('statBodyFat').value) || null,
+      muscle_mass: parseFloat(document.getElementById('statMuscle').value) || null,
+      chest: parseFloat(document.getElementById('statChest').value) || null,
+      waist: parseFloat(document.getElementById('statWaist').value) || null,
+      hips: parseFloat(document.getElementById('statHips').value) || null,
+      arms: parseFloat(document.getElementById('statArms').value) || null,
+      thighs: parseFloat(document.getElementById('statThighs').value) || null,
+    })
+  });
+  const data = await res.json();
+  if (data.success) { showToast('Stats saved!', 'success'); setTimeout(() => location.reload(), 800); }
+  else { showToast('Error saving', 'error'); btn.textContent = 'Save Stats'; btn.disabled = false; }
+}
+
+async function deleteStat(id, btn) {
+  if (!confirm('Delete this record?')) return;
+  btn.disabled = true;
+  await fetch(`/body-stats/${id}/delete`, { method: 'POST' });
+  btn.closest('tr').remove();
+  showToast('Deleted', 'success');
+}
+</script>
+{% endblock %}

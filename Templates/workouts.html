@@ -1,0 +1,108 @@
+{% extends 'base.html' %}
+{% block title %}Workouts – IronLog{% endblock %}
+
+{% block content %}
+<div class="page">
+  <div class="page-header fade-up" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="page-title">WORKOUTS</div>
+      <div class="page-subtitle">Your complete training history</div>
+    </div>
+    <a href="{{ url_for('new_workout') }}" class="btn-primary">+ Log Workout</a>
+  </div>
+
+  {% if workouts.items %}
+  <div class="card fade-up fade-up-1">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Workout</th>
+            <th>Date</th>
+            <th>Exercises</th>
+            <th>Duration</th>
+            <th>Volume</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for wo in workouts.items %}
+          {% set vol = namespace(total=0) %}
+          {% for ex in wo.exercises %}
+            {% for s in ex.sets %}
+              {% if s.weight and s.reps %}
+                {% set vol.total = vol.total + (s.weight * s.reps) %}
+              {% endif %}
+            {% endfor %}
+          {% endfor %}
+          <tr>
+            <td>
+              <a href="{{ url_for('view_workout', workout_id=wo.id) }}" style="font-weight:600;color:var(--text)">
+                {{ wo.name }}
+              </a>
+              {% if wo.notes %}
+              <div style="font-size:0.75rem;color:var(--text3);margin-top:2px">{{ wo.notes[:60] }}{% if wo.notes|length > 60 %}...{% endif %}</div>
+              {% endif %}
+            </td>
+            <td style="color:var(--text2);font-family:var(--font-mono);font-size:0.82rem">{{ wo.date|fmtdate('%b %d, %Y') }}</td>
+            <td>
+              <span class="badge badge-blue">{{ wo.exercises|length }} exercises</span>
+            </td>
+            <td style="color:var(--text2)">{{ wo.duration|string + ' min' if wo.duration else '—' }}</td>
+            <td style="font-family:var(--font-mono);color:var(--accent)">{{ vol.total|int }}kg</td>
+            <td>
+              <div style="display:flex;gap:8px;justify-content:flex-end">
+                <a href="{{ url_for('view_workout', workout_id=wo.id) }}" class="btn-secondary" style="padding:6px 12px;font-size:0.78rem">View</a>
+                <button onclick="deleteWorkout({{ wo.id }}, this)" class="btn-danger" style="font-size:0.78rem">Delete</button>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if workouts.pages > 1 %}
+  <div class="pagination fade-up">
+    {% if workouts.has_prev %}
+    <a href="{{ url_for('workouts', page=workouts.prev_num) }}" class="page-btn">‹</a>
+    {% endif %}
+    {% for p in workouts.iter_pages() %}
+      {% if p %}
+      <a href="{{ url_for('workouts', page=p) }}" class="page-btn {% if p == workouts.page %}current{% endif %}">{{ p }}</a>
+      {% else %}
+      <span style="color:var(--text3)">…</span>
+      {% endif %}
+    {% endfor %}
+    {% if workouts.has_next %}
+    <a href="{{ url_for('workouts', page=workouts.next_num) }}" class="page-btn">›</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card fade-up">
+    <div class="empty-state">
+      <div class="empty-icon">🏋️</div>
+      <div class="empty-title">No workouts logged yet</div>
+      <p style="color:var(--text3);margin-bottom:1.5rem">Start tracking your training progress today</p>
+      <a href="{{ url_for('new_workout') }}" class="btn-primary">Log Your First Workout</a>
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function deleteWorkout(id, btn) {
+  if (!confirm('Delete this workout?')) return;
+  btn.disabled = true; btn.textContent = '...';
+  await fetch(`/workout/${id}/delete`, { method: 'POST' });
+  btn.closest('tr').remove();
+  showToast('Workout deleted', 'success');
+}
+</script>
+{% endblock %}
